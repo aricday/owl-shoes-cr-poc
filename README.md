@@ -3,6 +3,69 @@
 AI voice agent built on Twilio ConversationRelay + OpenAI, with real-time Conversation
 Intelligence call summaries and a conference-based warm transfer to a human PSTN agent.
 
+## Overview
+
+A customer calls a Twilio number and talks to an OpenAI-powered voice agent in real
+time over Twilio ConversationRelay (Twilio handles speech-to-text and text-to-speech;
+this app just exchanges text with OpenAI over a WebSocket). In the background, Twilio
+Conversation Intelligence continuously summarizes the call and pushes updates to this
+app. When the customer asks for a human, the app puts them on hold music, dials a human
+agent, plays that agent a spoken whisper of the latest summary so they have instant
+context, then bridges agent and customer together in a conference. If the agent doesn't
+pick up, the customer hears a busy message instead and the call ends cleanly.
+
+## System interactions
+
+```mermaid
+sequenceDiagram
+    participant Customer
+    participant Twilio
+    participant App as App Server
+    participant OpenAI
+    participant CI as Conversation Intelligence
+    participant Agent as Human Agent
+
+    Customer->>Twilio: Places call
+    Twilio->>App: POST /voice/incoming
+    App->>Twilio: TwiML: <Connect><ConversationRelay>
+    App->>Twilio: Start real-time Transcription (REST)
+    Twilio->>CI: Feed transcript via Conversation Orchestrator
+    Twilio->>Customer: Connects audio (ConversationRelay WebSocket)
+
+    loop Conversation turns
+        Customer->>Twilio: Speech
+        Twilio->>App: WS "prompt" (transcribed text)
+        App->>OpenAI: Chat completion (streamed)
+        OpenAI-->>App: Response tokens
+        App->>Twilio: WS "text" tokens
+        Twilio->>Customer: Spoken reply (TTS)
+    end
+
+    par Background summary pipeline
+        CI->>App: POST /intelligence-webhook (pushed summary, every N utterances)
+        App->>App: Cache session.liveSummary
+    end
+
+    Customer->>Twilio: "Let me speak to a human"
+    Twilio->>App: WS "prompt" (handoff intent detected)
+    App->>Twilio: Redirect call (REST) into hold conference
+    Twilio->>Customer: Hold music
+    App->>Twilio: Outbound call to agent (REST)
+    Twilio->>Agent: Rings agent's phone
+
+    alt Agent answers
+        Agent->>Twilio: Answers
+        Twilio->>App: POST /agent-whisper
+        App->>Twilio: TwiML: <Say> summary, then <Dial><Conference>
+        Twilio->>Agent: Speaks cached/fallback summary
+        Twilio->>Twilio: Bridges Agent + Customer in conference
+    else Agent busy / no-answer / failed / timeout
+        Twilio->>App: POST /agent-call-status (busy/no-answer/failed)
+        App->>Twilio: Redirect customer (REST) to /voice/fallback
+        Twilio->>Customer: "All lines are busy..." then hangs up
+    end
+```
+
 ## Setup
 
 1. `npm install`
