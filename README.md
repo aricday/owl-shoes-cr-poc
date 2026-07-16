@@ -48,7 +48,9 @@ sequenceDiagram
 
     Customer->>Twilio: "Let me speak to a human"
     Twilio->>App: WS "prompt" (handoff intent detected)
-    App->>Twilio: Redirect call (REST) into hold conference
+    App->>Twilio: WS "end" (handoffData: live-agent-handoff)
+    Twilio->>App: POST /voice/relay-ended (<Connect action> callback)
+    App->>Twilio: TwiML: <Dial><Conference> (hold)
     Twilio->>Customer: Hold music
     App->>Twilio: Outbound call to agent (REST)
     Twilio->>Agent: Rings agent's phone
@@ -114,9 +116,13 @@ Mechanically, per call:
 1. `POST /voice/incoming` starts a real-time Transcription via the REST API (not TwiML
    `<Start>`, for full control) with `conversationConfiguration` set, which feeds
    Conversation Orchestrator → Conversation Intelligence.
-2. The app polls `intelligence.v3.conversations.list({ channelId: CallSid })` briefly to
-   learn the resulting `conversationId`, and maps it back to the CallSid — the webhook
-   push only carries `conversationId`, not CallSid.
+2. The app polls `GET https://intelligence.twilio.com/v3/Conversations?channelId=<CallSid>`
+   briefly to learn the resulting `conversationId`, and maps it back to the CallSid — the
+   webhook push only carries `conversationId`, not CallSid. This is a raw `fetch()` call,
+   not the `twilio` SDK: the installed SDK version only generates `client.intelligence.v2`
+   with no resource methods, so the v3 control-plane surface (Conversations, Configurations,
+   Operators, Memory Stores) has to be called directly over REST — see
+   `scripts/setup-intelligence.js` for the same pattern.
 3. `POST /intelligence-webhook` receives each pushed Summary result and caches it on the
    in-memory session, keyed via that mapping.
 4. On transfer, `session.liveSummary` (or the OpenAI fallback) becomes the whisper text.
@@ -140,5 +146,6 @@ Mechanically, per call:
   scope. It is not persisted and does not survive a server restart mid-call.
 - The pre-built Summary operator ID is a platform-wide constant
   (`intelligence_operator_01kcv35pnkeysaf6z6cqtbpegn`); if it doesn't work on your
-  account, list your available operators (`client.intelligence.v3.operators.list()`)
-  and override `TWILIO_SUMMARY_OPERATOR_ID` before running the setup script.
+  account, list your available operators (`GET
+  https://intelligence.twilio.com/v3/ControlPlane/Operators` — again raw REST, not the
+  SDK) and override `TWILIO_SUMMARY_OPERATOR_ID` before running the setup script.
