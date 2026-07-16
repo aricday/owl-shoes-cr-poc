@@ -87,6 +87,20 @@ sequenceDiagram
    `https://<subdomain>.ngrok-free.app/voice/incoming` (HTTP POST).
 6. `npm start`
 
+## Customizing the brand
+
+The voice agent's persona and greeting are swappable without touching code, so the same
+architecture can be re-skinned per demo:
+
+- `BRAND_PROMPT_FILE` — path to a text file with the brand's identity/tone/scope. See
+  `prompts/default.txt` (generic) and `prompts/owl-shoes.txt` (example). This is composed
+  with fixed voice-formatting and safety/handoff rules in `server.js` — those stay the same
+  regardless of brand, since they're load-bearing for how the app works, not brand voice.
+- `AGENT_GREETING` — the spoken greeting when ConversationRelay answers the call.
+
+Add a new `prompts/<brand>.txt` file and point `BRAND_PROMPT_FILE` at it (plus set
+`AGENT_GREETING`) to switch brands; no restart-time code changes needed.
+
 ## Prerequisites on your Twilio account
 
 - **ConversationRelay** requires onboarding (Console > Voice > ConversationRelay) — not
