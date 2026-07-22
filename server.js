@@ -104,6 +104,10 @@ app.post('/voice/incoming', (req, res) => {
   connect.conversationRelay({
     url: `wss://${PUBLIC_HOSTNAME}/relay`,
     welcomeGreeting: AGENT_GREETING,
+    // Pinned explicitly (this is ConversationRelay's own implicit en-US default) so the
+    // voice stays stable rather than silently following whatever Twilio defaults to next.
+    ttsProvider: 'ElevenLabs',
+    voice: 'UgBBYS2sOqTuMpoF3BR0',
   });
 
   res.type('text/xml').send(twiml.toString());
@@ -358,8 +362,11 @@ app.post('/agent-whisper', (req, res) => {
   const summary = session?.summary || 'A customer is waiting.';
 
   const twiml = new twilio.twiml.VoiceResponse();
+  // Generative tier - Twilio's most natural-sounding Amazon/Google voices, closest in
+  // spirit to the customer-facing ElevenLabs voice. <Say> doesn't support ElevenLabs
+  // itself (that's ConversationRelay-only), so this is as close as this leg can get.
   twiml.say(
-    { voice: 'Polly.Joanna' },
+    { voice: 'Polly.Matthew-Generative' },
     `Incoming transfer. Summary of conversation: ${summary}. Transferring you in now.`
   );
   twiml.dial().conference(
