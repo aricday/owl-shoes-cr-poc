@@ -27,7 +27,7 @@ sequenceDiagram
 
     Customer->>Twilio: Places call
     Twilio->>App: POST /voice/incoming
-    App->>Twilio: TwiML: <Connect><ConversationRelay>
+    App->>Twilio: TwiML: <Connect action="/voice/relay-ended"><ConversationRelay>
     App->>Twilio: Start real-time Transcription (REST)
     Twilio->>CI: Feed transcript via Conversation Orchestrator
     Twilio->>Customer: Connects audio (ConversationRelay WebSocket)
@@ -50,7 +50,7 @@ sequenceDiagram
     Twilio->>App: WS "prompt" (handoff intent detected)
     App->>Twilio: WS "end" (handoffData: live-agent-handoff)
     Twilio->>App: POST /voice/relay-ended (<Connect action> callback)
-    App->>Twilio: TwiML: <Dial><Conference> (hold)
+    App->>Twilio: TwiML: <Dial><Conference endConferenceOnExit=true> (hold)
     Twilio->>Customer: Hold music
     App->>Twilio: Outbound call to agent (REST)
     Twilio->>Agent: Rings agent's phone
@@ -58,9 +58,10 @@ sequenceDiagram
     alt Agent answers
         Agent->>Twilio: Answers
         Twilio->>App: POST /agent-whisper
-        App->>Twilio: TwiML: <Say> summary, then <Dial><Conference>
+        App->>Twilio: TwiML: <Say> summary, then <Dial><Conference endConferenceOnExit=true>
         Twilio->>Agent: Speaks cached/fallback summary
         Twilio->>Twilio: Bridges Agent + Customer in conference
+        Note over Twilio: Either party hanging up now ends the call for both
     else Agent busy / no-answer / failed / timeout
         Twilio->>App: POST /agent-call-status (busy/no-answer/failed)
         App->>Twilio: Redirect customer (REST) to /voice/fallback
