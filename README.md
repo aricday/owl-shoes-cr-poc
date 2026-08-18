@@ -1,7 +1,6 @@
 # ConvoRelay POC
 
-AI voice agent built on Twilio ConversationRelay + OpenAI, with real-time Conversation
-Intelligence call summaries and a conference-based warm transfer to a human PSTN agent.
+An AI voice agent built on Twilio ConversationRelay and OpenAI that answers inbound calls, holds a natural spoken conversation, and knows when a caller needs a human. Conversation Intelligence pushes real-time call summaries throughout the interaction, so when the agent detects handoff intent, it can escalate seamlessly: the caller is placed on hold in a conference, a human PSTN agent is dialed and briefed with a whisper of the live summary, and the two are bridged together with no dead air or repeated context. The result is a voice experience that feels natural, with a warm, informed handoff to a person whenever the conversation calls for it.
 
 ## Overview
 
